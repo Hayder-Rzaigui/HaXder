@@ -1,0 +1,18 @@
+id: exposed-git-config
+info:
+  name: Exposed .git/config
+  author: HaXder
+  severity: high
+  description: Checks whether a target's .git repository metadata is reachable over HTTP, which can leak source history and credentials.
+requests:
+  - method: GET
+    path:
+      - "{{BaseURL}}/.git/config"
+    matchers:
+      - type: word
+        words:
+          - "[core]"
+          - "repositoryformatversion"
+      - type: status
+        status:
+          - 200

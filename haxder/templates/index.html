@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HaXder | The Throne Edition</title>
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <style>
+        body {
+            background-color: #0d1117;
+            color: #c9d1d9;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        .header {
+            background-color: #161b22;
+            padding: 20px;
+            border-bottom: 1px solid #30363d;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            color: #58a6ff;
+        }
+        .stats {
+            display: flex;
+            gap: 20px;
+        }
+        .stat-box {
+            background-color: #21262d;
+            padding: 10px 20px;
+            border-radius: 6px;
+            border: 1px solid #30363d;
+            text-align: center;
+        }
+        .stat-box span {
+            display: block;
+            font-size: 12px;
+            color: #8b949e;
+            text-transform: uppercase;
+        }
+        .stat-box strong {
+            font-size: 20px;
+            color: #fff;
+        }
+        #network-graph {
+            flex-grow: 1;
+            width: 100%;
+            height: 100%;
+        }
+        /* Loader */
+        .loader-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border-left-color: #58a6ff;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px auto;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>HaXder <span style="color:#8b949e; font-size: 16px;">Enterprise Framework</span></h1>
+        <div class="stats">
+            <div class="stat-box">
+                <span>Base Domains</span>
+                <strong>{{ stats.base_domains }}</strong>
+            </div>
+            <div class="stat-box">
+                <span>Discovered Subdomains</span>
+                <strong>{{ stats.subdomains }}</strong>
+            </div>
+        </div>
+    </div>
+
+    <div class="loader-container" id="loader">
+        <div class="spinner"></div>
+        <div>Loading Intelligence Graph...</div>
+    </div>
+
+    <div id="network-graph"></div>
+
+    <script type="text/javascript">
+        // Fetch Graph Data from HaXder API
+        fetch('/api/graph_data')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('loader').style.display = 'none';
+
+                var container = document.getElementById('network-graph');
+                
+                var graphData = {
+                    nodes: new vis.DataSet(data.nodes),
+                    edges: new vis.DataSet(data.edges)
+                };
+                
+                var options = {
+                    nodes: {
+                        shape: 'dot',
+                        font: { color: '#c9d1d9', size: 14 }
+                    },
+                    edges: {
+                        color: '#30363d',
+                        width: 1,
+                        smooth: { type: 'continuous' }
+                    },
+                    groups: {
+                        origin: { color: { background: '#ff7b72', border: '#ff7b72' } },
+                        base: { color: { background: '#58a6ff', border: '#58a6ff' } },
+                        sub: { color: { background: '#238636', border: '#238636' } }
+                    },
+                    physics: {
+                        forceAtlas2Based: {
+                            gravitationalConstant: -50,
+                            centralGravity: 0.01,
+                            springLength: 100,
+                            springConstant: 0.08
+                        },
+                        maxVelocity: 50,
+                        solver: 'forceAtlas2Based',
+                        timestep: 0.35,
+                        stabilization: { iterations: 150 }
+                    }
+                };
+
+                var network = new vis.Network(container, graphData, options);
+            })
+            .catch(error => {
+                console.error("Error loading graph data:", error);
+                document.getElementById('loader').innerHTML = "<div style='color:#ff7b72'>Error loading graph data. Make sure scans are completed.</div>";
+            });
+    </script>
+</body>
+</html>

@@ -1,0 +1,67 @@
+[
+  {
+    "service": "AWS S3",
+    "cname": ["s3.amazonaws.com"],
+    "fingerprint": "The specified bucket does not exist"
+  },
+  {
+    "service": "AWS S3",
+    "cname": ["s3.amazonaws.com"],
+    "fingerprint": "NoSuchBucket"
+  },
+  {
+    "service": "GitHub Pages",
+    "cname": ["github.io"],
+    "fingerprint": "There isn't a GitHub Pages site here"
+  },
+  {
+    "service": "Heroku",
+    "cname": ["herokuapp.com"],
+    "fingerprint": "No such app"
+  },
+  {
+    "service": "Zendesk",
+    "cname": ["zendesk.com"],
+    "fingerprint": "Help Center Closed"
+  },
+  {
+    "service": "Azure",
+    "cname": ["azurewebsites.net", "cloudapp.net", "trafficmanager.net"],
+    "fingerprint": "404 Web Site not found"
+  },
+  {
+    "service": "Tumblr",
+    "cname": ["domains.tumblr.com"],
+    "fingerprint": "Whatever you were looking for doesn't currently exist at this address."
+  },
+  {
+    "service": "Wordpress",
+    "cname": ["wordpress.com"],
+    "fingerprint": "Do you want to register"
+  },
+  {
+    "service": "Shopify",
+    "cname": ["myshopify.com"],
+    "fingerprint": "Sorry, this shop is currently unavailable"
+  },
+  {
+    "service": "Ghost",
+    "cname": ["ghost.io"],
+    "fingerprint": "The thing you were looking for is no longer here"
+  },
+  {
+    "service": "Squarespace",
+    "cname": ["squarespace.com"],
+    "fingerprint": "Squarespace - Claim This Domain"
+  },
+  {
+    "service": "Pantheon",
+    "cname": ["pantheonsite.io"],
+    "fingerprint": "404 error unknown site!"
+  },
+  {
+    "service": "Readme.io",
+    "cname": ["readme.io"],
+    "fingerprint": "Project doesnt exist... yet!"
+  }
+]

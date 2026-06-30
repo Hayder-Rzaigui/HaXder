@@ -1,0 +1,22 @@
+# HaXder Configuration
+# Fill in any API keys below to unlock the premium OSINT sources.
+# Leaving a key blank (or invalid) just means that source is skipped at runtime - nothing breaks.
+
+api_keys:
+  # Free tier available at https://securitytrails.com/
+  securitytrails: "YOUR_API_KEY_HERE"
+
+  # Sign up at https://account.shodan.io/
+  shodan: "YOUR_API_KEY_HERE"
+
+  # ProjectDiscovery's Chaos dataset
+  chaos: "YOUR_API_KEY_HERE"
+
+  # VirusTotal API key
+  virustotal: "YOUR_API_KEY_HERE"
+
+  # Discord webhook URL - used to push scan-complete notifications
+  discord_webhook: "YOUR_DISCORD_WEBHOOK_URL_HERE"
+
+  # Slack webhook URL - used to push scan-complete notifications
+  slack_webhook: "YOUR_SLACK_WEBHOOK_URL_HERE"

@@ -1,0 +1,11 @@
+name: "crtsh-yaml"
+description: "Queries the public crt.sh Certificate Transparency log dataset for hostnames issued under the target domain"
+request:
+  method: "GET"
+  url: "https://crt.sh/?q=%.{{domain}}&output=json"
+  headers:
+    User-Agent: "HaXder-Enterprise-Engine"
+    Accept: "application/json"
+extraction:
+  # Regex used to pull subdomain-shaped hostnames out of the response body
+  regex: "([a-zA-Z0-9\\*\\.-]+\\.[a-zA-Z0-9\\-]+)"
