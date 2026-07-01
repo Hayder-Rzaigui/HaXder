@@ -8,7 +8,8 @@
   [![Async](https://img.shields.io/badge/Engine-AsyncIO-lightgrey.svg)]()
 </div>
 
----
+<img width="1366" height="768" alt="VirtualBox_kali-linux-2026 1-virtualbox-amd64_01_07_2026_10_56_34" src="https://github.com/user-attachments/assets/987037c5-e336-40c4-bfd8-bc2e8e148091" />
+
 
 **HaXder** maps a domain's exposed surface by combining passive OSINT collection with active validation. It pulls candidate hostnames from a dozen-plus public and premium data sources, expands that list with dictionary brute-forcing and permutation guessing, then runs every candidate through async DNS resolution with wildcard awareness so what comes out the other end is a short list of real, reachable hosts rather than a wall of noise.
 
