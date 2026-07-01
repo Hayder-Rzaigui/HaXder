@@ -1,7 +1,7 @@
 import logging
 import aiohttp
 import json
-from haxder.config import Config
+from haxder.settings import Config
 
 log = logging.getLogger("haxder")
 

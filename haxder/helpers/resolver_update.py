@@ -10,7 +10,7 @@ class ResolversUpdater:
     Downloads and updates the list of public resolvers from trusted sources.
     """
 
-    def __init__(self, resolvers_path: str = "resolvers.txt"):
+    def __init__(self, resolvers_path: str = "dns_resolvers.txt"):
         self.resolvers_path = resolvers_path
 
     async def update(self):

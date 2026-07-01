@@ -6,7 +6,7 @@ log = logging.getLogger("haxder")
 
 class Config:
     def __init__(self, config_path: str = None):
-        self.config_path = config_path or "config.yaml"
+        self.config_path = config_path or "settings.yaml"
         self.api_keys = {}
         self.load_config()
 

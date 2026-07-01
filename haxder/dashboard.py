@@ -8,15 +8,15 @@ import uvicorn
 import os
 import json
 
-from haxder.db import Database
-# from haxder.cli import async_main # (Importing this might cause circular import depending on structure, we'll avoid trigger for now to keep UI purely analytical)
+from haxder.storage import Database
+# from haxder.runner import async_main # (Importing this might cause circular import depending on structure, we'll avoid trigger for now to keep UI purely analytical)
 
 app = FastAPI(title="HaXder Enterprise Dashboard")
 db = Database()
 
 # Ensure templates directory exists
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
+TEMPLATES_DIR = os.path.join(BASE_DIR, "webui")
 if not os.path.exists(TEMPLATES_DIR):
     os.makedirs(TEMPLATES_DIR)
 
@@ -25,7 +25,7 @@ templates = Jinja2Templates(directory=TEMPLATES_DIR)
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
     stats = db.get_stats()
-    return templates.TemplateResponse("index.html", {"request": request, "stats": stats})
+    return templates.TemplateResponse("dashboard.html", {"request": request, "stats": stats})
 
 @app.get("/api/graph_data")
 async def get_graph_data():

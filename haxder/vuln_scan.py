@@ -13,7 +13,7 @@ class VulnEngine:
     Native vulnerability scanner that executes YAML templates against discovered endpoints.
     Similar to Nuclei but tightly integrated into the HaXder streaming pipeline.
     """
-    def __init__(self, templates_dir: str = "templates"):
+    def __init__(self, templates_dir: str = "vuln_checks"):
         self.templates_dir = templates_dir
         self.templates = []
         self._load_templates()

@@ -5,21 +5,21 @@ import aiohttp
 import yaml
 from typing import List, Set, Optional
 
-from haxder.config import Config
-from haxder.sources.base import BaseSource
-from haxder.sources.yaml_engine import YamlSource
-from haxder.sources.crtsh import CrtShSource
-from haxder.sources.hackertarget import HackerTargetSource
-from haxder.sources.alienvault import AlienVaultSource
-from haxder.sources.certspotter import CertSpotterSource
-from haxder.sources.urlscan import URLScanSource
-from haxder.sources.wayback import WaybackSource
-from haxder.sources.anubis import AnubisSource
-from haxder.sources.securitytrails import SecurityTrailsSource
-from haxder.sources.shodan import ShodanSource
-from haxder.sources.virustotal import VirusTotalSource
-from haxder.sources.chaos import ChaosSource
-from haxder.sources.bufferover import BufferOverSource
+from haxder.settings import Config
+from haxder.feeds.provider_base import BaseSource
+from haxder.feeds.yaml_provider import YamlSource
+from haxder.feeds.feed_crtsh import CrtShSource
+from haxder.feeds.feed_hackertarget import HackerTargetSource
+from haxder.feeds.feed_alienvault import AlienVaultSource
+from haxder.feeds.feed_certspotter import CertSpotterSource
+from haxder.feeds.feed_urlscan import URLScanSource
+from haxder.feeds.feed_wayback import WaybackSource
+from haxder.feeds.feed_anubis import AnubisSource
+from haxder.feeds.feed_securitytrails import SecurityTrailsSource
+from haxder.feeds.feed_shodan import ShodanSource
+from haxder.feeds.feed_virustotal import VirusTotalSource
+from haxder.feeds.feed_chaos import ChaosSource
+from haxder.feeds.feed_bufferover import BufferOverSource
 
 log = logging.getLogger("haxder")
 
@@ -64,7 +64,7 @@ class SubdomainEnumerator:
 
         return sources
 
-    def _load_yaml_providers(self, providers_dir: str = "providers"):
+    def _load_yaml_providers(self, providers_dir: str = "data_feeds"):
         if not os.path.isdir(providers_dir):
             return
 

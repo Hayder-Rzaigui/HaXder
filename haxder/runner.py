@@ -8,85 +8,60 @@ import os
 import re
 import sys
 from rich.console import Console
-from rich.theme import Theme
 from rich.table import Table
+from rich.theme import Theme
 from rich.panel import Panel
-from rich.box import SQUARE, HEAVY_HEAD
+from rich.align import Align
 from rich.text import Text
-from rich.rule import Rule
+from rich import box
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
 from rich.logging import RichHandler
 
-from haxder.enumerator import SubdomainEnumerator
-from haxder.resolver import SubdomainResolver
-from haxder.mutator import PermutationEngine
-from haxder.bruteforce import BruteForceEngine
-from haxder.prober import HttpProber
-from haxder.takeover import TakeoverEngine
-from haxder.webhooks import Notifier
-from haxder.db import Database
-from haxder.utils.resolvers import ResolversUpdater
-from haxder.utils.asn import ASNLookup
-from haxder.utils.bounty import BountyScopeFetcher
-from haxder.extractor import UrlExtractor
-from haxder.vuln_engine import VulnEngine
+from haxder.discovery import SubdomainEnumerator
+from haxder.dns_resolve import SubdomainResolver
+from haxder.permutations import PermutationEngine
+from haxder.dictionary_scan import BruteForceEngine
+from haxder.http_scan import HttpProber
+from haxder.takeover_check import TakeoverEngine
+from haxder.alerts import Notifier
+from haxder.storage import Database
+from haxder.helpers.resolver_update import ResolversUpdater
+from haxder.helpers.asn_lookup import ASNLookup
+from haxder.helpers.bounty_scope import BountyScopeFetcher
+from haxder.url_harvester import UrlExtractor
+from haxder.vuln_scan import VulnEngine
 import aiohttp
 
-# ---------------------------------------------------------------------------
-# Corporate Enterprise theme
-# A restrained, professional palette: steel blue for primary/info,
-# slate gray for secondary/neutral text, muted teal for success,
-# amber for warnings, and a desaturated red for critical findings.
-# ---------------------------------------------------------------------------
+# Slate / amber / teal palette - kept intentionally distinct from the
+# default rich "bold cyan / bold green / bold red" combo so output has
+# its own visual identity rather than looking like generic tool boilerplate.
 HAXDER_THEME = Theme({
-    "brand":        "bold #4C8BF5",     # primary accent (headers, banner)
-    "brand.dim":    "#7C93B5",          # secondary accent (rules, borders)
-    "info":         "#5C9CE6",          # informational step messages
-    "success":      "#3DA88A",          # completed steps
-    "warning":      "#D8A23B",          # non-fatal issues
-    "danger":       "bold #C75450",     # failures
-    "critical":     "bold white on #8B2E2E",  # takeover / vuln highlight
-    "muted":        "#8C97A8",          # secondary / neutral text
-    "label":        "bold #2E3B4E",     # field labels
-    "value":        "#37475A",          # field values
+    "brand":    "bold turquoise2",
+    "info":     "bold steel_blue1",
+    "success":  "bold sea_green3",
+    "warning":  "bold dark_orange3",
+    "danger":   "bold bright_red",
+    "accent":   "bold plum2",
+    "muted":    "grey62",
+    "header":   "bold white on grey19",
 })
 
 console = Console(theme=HAXDER_THEME)
 silent_console = Console(stderr=True, theme=HAXDER_THEME)
 
-
 def print_banner():
-    """Render the corporate-style startup banner."""
-    title = Text("HAXDER", style="bold #FFFFFF on #1F4E8C", justify="center")
-    subtitle = Text("Enterprise Attack Surface Management", style="brand.dim", justify="center")
+    title = Text("H A X D E R", style="brand", justify="center")
+    subtitle = Text("Attack Surface Recon Framework", style="muted", justify="center")
+    author = Text("— Hayder Rzaigui —", style="accent", justify="center")
+    body = Text.assemble(title, "\n", subtitle, "\n", author)
     panel = Panel(
-        Text.assemble(title, "\n", subtitle),
-        box=SQUARE,
-        border_style="brand.dim",
-        padding=(1, 4),
-        expand=False,
+        Align.center(body),
+        box=box.HEAVY,
+        border_style="brand",
+        padding=(1, 6),
     )
-    console.print(panel, justify="center")
-
-
-def print_step(message: str):
-    console.print(f"  [brand]›[/brand] [info]{message}[/info]")
-
-
-def print_success(message: str):
-    console.print(f"  [success]✓[/success] [success]{message}[/success]")
-
-
-def print_warning(message: str):
-    console.print(f"  [warning]⚠[/warning] [warning]{message}[/warning]")
-
-
-def print_error(message: str):
-    console.print(f"  [danger]✗[/danger] [danger]{message}[/danger]")
-
-
-def print_section(label: str):
-    console.print(Rule(f"[label]{label}[/label]", style="brand.dim", align="left"))
+    console.print(Align.center(panel))
+    console.print()
 
 def setup_logging(verbose: bool, silent: bool):
     level = logging.DEBUG if verbose else logging.WARNING
@@ -166,8 +141,8 @@ class UniqueQueue:
 
 async def run_pipeline_for_domain(target_domain: str, args, enumerator: SubdomainEnumerator, db: Database, notifier: Notifier):
     if not args.quiet:
+        console.rule(f"[info]Scanning Target » {target_domain}[/info]", style="accent")
         console.print()
-        print_section(f"Target: {target_domain}")
 
     previous_subs = db.get_previous_subdomains(target_domain) if args.monitor else set()
     
@@ -215,14 +190,11 @@ async def run_pipeline_for_domain(target_domain: str, args, enumerator: Subdomai
     enum_progress_cb = None
     if not args.quiet:
         progress = Progress(
-            SpinnerColumn(style="brand"),
-            TextColumn("[info]{task.description}[/info]"),
-            BarColumn(complete_style="brand", finished_style="success", style="muted"),
-            TaskProgressColumn(style="value"),
-            console=console, transient=True
+            SpinnerColumn(style="accent"), TextColumn("[progress.description]{task.description}"),
+            BarColumn(complete_style="brand", finished_style="success"), TaskProgressColumn(), console=console, transient=True
         )
         progress.start()
-        enum_task_progress = progress.add_task("Passive enumeration...", total=len(enumerator.sources))
+        enum_task_progress = progress.add_task("[info]Passive enumeration in progress...", total=len(enumerator.sources))
         def enum_progress_cb(source_name):
             progress.advance(enum_task_progress)
 
@@ -230,13 +202,13 @@ async def run_pipeline_for_domain(target_domain: str, args, enumerator: Subdomai
     
     if not args.quiet:
         progress.stop()
-        print_success(f"Passive enumeration complete — {len(discovered_passive)} subdomains found")
+        console.print(f"[success]✓ Passive Enumeration complete. Found {len(discovered_passive)} subdomains.[/success]")
 
     discovered_all = set(discovered_passive)
     
     if args.permute and discovered_passive:
         if not args.quiet:
-            print_step("Running permutation engine...")
+            console.print("[info]▸ Running Permutation Engine...[/info]")
         engine = PermutationEngine(alterations_file=args.permute_list)
         mutated = engine.mutate(discovered_passive, target_domain)
         for m in mutated:
@@ -245,7 +217,7 @@ async def run_pipeline_for_domain(target_domain: str, args, enumerator: Subdomai
 
     if args.brute:
         if not args.quiet:
-            print_step("Running active dictionary brute force...")
+            console.print("[info]▸ Running Active Dictionary Brute Forcing...[/info]")
         bf_engine = BruteForceEngine(wordlist_path=args.dict_file)
         bf_engine.load_words()
         bf_candidates = bf_engine.generate(target_domain)
@@ -270,7 +242,7 @@ async def run_pipeline_for_domain(target_domain: str, args, enumerator: Subdomai
     await out_task
     
     if args.deep_scan and not args.quiet:
-        print_step("Starting recursive enumeration on active subdomains...")
+        console.print(f"[info]▸ Starting Recursive Enumeration on active subdomains...[/info]")
         for sub in list(resolved_data.keys()):
             if sub != target_domain:
                 recursive_subs = await enumerator.enumerate(sub, progress_callback=None)
@@ -292,7 +264,7 @@ async def run_pipeline_for_domain(target_domain: str, args, enumerator: Subdomai
         
         active_subs = list(resolved_data.keys())
         if not args.quiet:
-            print_step(f"Running HTTP probing — {len(ports)} ports across {len(active_subs)} targets...")
+            console.print(f"[info]▸ Running Port/HTTP Probing on {len(ports)} ports across {len(active_subs)} targets...[/info]")
             
         probe_data = await prober.probe_all(active_subs)
             
@@ -304,21 +276,21 @@ async def run_pipeline_for_domain(target_domain: str, args, enumerator: Subdomai
                     takeover_data[sub] = vuln_service
         
         if not args.quiet:
-            print_success("HTTP probing and analysis complete")
+            console.print(f"[success]✓ HTTP Probing & Analysis complete.[/success]")
             if args.check_takeover and takeover_data:
-                console.print(f"  [critical] ⚠ {len(takeover_data)} POTENTIAL SUBDOMAIN TAKEOVER(S) DETECTED [/critical]")
+                console.print(f"[danger]✗ Found {len(takeover_data)} POTENTIAL SUBDOMAIN TAKEOVERS![/danger]")
 
     # URL Extraction & Secret Scanning
     secret_findings = []
     if args.harvest and resolved_data:
         extractor = UrlExtractor(threads=args.concurrency)
         if not args.quiet:
-            print_step("Running Wayback URL extraction and secret scanning...")
+            console.print(f"[info]▸ Running Wayback URL Extraction & Secret Scanning...[/info]")
         urls = await extractor.get_urls(target_domain)
         if urls:
             secret_findings = await extractor.scan_secrets(urls)
             if not args.quiet:
-                print_success(f"Extracted {len(urls)} URLs — {len(secret_findings)} exposed secret(s) found")
+                console.print(f"[success]✓ Extracted {len(urls)} URLs. Found {len(secret_findings)} exposed secrets in JS files.[/success]")
 
     # Native Vulnerability Scanning
     vuln_findings = []
@@ -337,7 +309,7 @@ async def run_pipeline_for_domain(target_domain: str, args, enumerator: Subdomai
             
         vuln_findings = await vuln_engine.scan(active_targets, threads=args.concurrency)
         if not args.quiet and vuln_findings:
-            console.print(f"  [critical] ⚠ Vulnerability engine found {len(vuln_findings)} potential issue(s) [/critical]")
+            console.print(f"[danger]✗ Vulnerability Engine found {len(vuln_findings)} potential issues![/danger]")
 
     # Worker Node Submission
     if args.worker_of:
@@ -351,33 +323,33 @@ async def run_pipeline_for_domain(target_domain: str, args, enumerator: Subdomai
                 async with session.post(master_url, json=payload, timeout=10) as resp:
                     if resp.status == 200:
                         if not args.quiet:
-                            print_success(f"Results submitted to master node ({args.worker_of})")
+                            console.print(f"[success]✓ Successfully submitted results to Master Node ({args.worker_of}).[/success]")
         except Exception as e:
             if not args.quiet:
-                print_error(f"Failed to submit to master node: {e}")
+                console.print(f"[danger]✗ Failed to submit to Master Node: {e}[/danger]")
 
     # DNS Email Security Audit
     dns_audit_results = {}
     if resolved_data and not args.skip_resolve:
-        from haxder.dns_audit import DnsAuditor
+        from haxder.mail_dns_check import DnsAuditor
         if not args.quiet:
-            print_step("Running DNS email security (SPF/DMARC) audit...")
+            console.print(f"[info]▸ Running DNS Email Security (SPF/DMARC) Audit...[/info]")
         try:
             auditor = DnsAuditor()
             dns_audit_results = await auditor.audit_domain(target_domain)
             if not args.quiet:
                 spf_status = dns_audit_results.get("spf", {}).get("status", "N/A")
                 dmarc_status = dns_audit_results.get("dmarc", {}).get("status", "N/A")
-                print_success(f"DNS audit complete — SPF: {spf_status} | DMARC: {dmarc_status}")
+                console.print(f"[success]✓ DNS Audit Complete. SPF: {spf_status} | DMARC: {dmarc_status}[/success]")
         except Exception as e:
             if not args.quiet:
-                print_error(f"DNS audit failed: {e}")
+                console.print(f"[danger]✗ DNS Audit failed: {e}[/danger]")
 
     # Report Generation
     if args.html_report and resolved_data:
-        from haxder.reporter import ReportGenerator
+        from haxder.report_builder import ReportGenerator
         if not args.quiet:
-            print_step(f"Generating interactive HTML report: {args.html_report}...")
+            console.print(f"[info]▸ Generating interactive HTML report: {args.html_report}...[/info]")
         try:
             reporter = ReportGenerator(
                 target_domain=target_domain,
@@ -390,10 +362,10 @@ async def run_pipeline_for_domain(target_domain: str, args, enumerator: Subdomai
             )
             reporter.generate_html(args.html_report)
             if not args.quiet:
-                print_success(f"Report saved to {args.html_report}")
+                console.print(f"[success]✓ Report successfully saved to {args.html_report}[/success]")
         except Exception as e:
             if not args.quiet:
-                print_error(f"Failed to generate report: {e}")
+                console.print(f"[danger]✗ Failed to generate report: {e}[/danger]")
 
     if notifier:
         msg = f"[*] HaXder Scan Completed for `{target_domain}`\n"
@@ -438,64 +410,43 @@ async def run_pipeline_for_domain(target_domain: str, args, enumerator: Subdomai
     if args.save:
         write_output_file(args.save, target_domain, resolved_data, probe_data, takeover_data)
         if not args.quiet:
-            print_success(f"Results saved to {args.save}")
+            console.print(f"[success]✓ Results saved to {args.save}[/success]")
 
     if not args.quiet:
-        mode_tag = " · Diff Mode" if args.monitor else ""
-
+        table_title = f"Results — {target_domain}" + (" [monitor mode]" if args.monitor else "")
         table = Table(
-            box=HEAVY_HEAD,
-            border_style="brand.dim",
-            header_style="bold white on #1F4E8C",
-            row_styles=["value"],
+            title=table_title,
+            title_style="bold brand",
+            box=box.ROUNDED,
+            border_style="grey50",
+            header_style="header",
+            row_styles=["", "on grey11"],
             pad_edge=False,
-            expand=True,
-            show_lines=False,
+            expand=False,
         )
-        table.add_column("SUBDOMAIN", style="bold #2E3B4E", no_wrap=True, ratio=3)
-        table.add_column("RESOLVED IP(S)", style="#3B6FB6", ratio=3)
+        table.add_column("Subdomain", style="accent", no_wrap=True)
+        table.add_column("Resolved IPs", style="steel_blue1")
         if args.http_check or args.check_takeover:
-            table.add_column("STATUS", justify="center", ratio=1)
-            table.add_column("PAGE TITLE", style="muted", ratio=3)
+            table.add_column("Status", justify="center")
+            table.add_column("Title", style="muted")
         if args.check_takeover:
-            table.add_column("TAKEOVER RISK", justify="center", ratio=2)
+            table.add_column("Takeover Risk", justify="center")
 
         for sub, res_dict in sorted(resolved_data.items()):
             ips = res_dict.get("ips", [])
-            ip_str = "\n".join(ips) if ips else "[danger]not resolved[/danger]"
+            ip_str = "\n".join(ips) if ips else "[danger]unresolved[/danger]"
             row_data = [sub, ip_str]
-
             if args.http_check or args.check_takeover:
                 status = probe_data.get(sub, {}).get("status", "N/A")
-                title = probe_data.get(sub, {}).get("title", "N/A") or "[muted]—[/muted]"
-                if status == "200":
-                    status_str = f"[success]{status}[/success]"
-                elif status == "ERR":
-                    status_str = f"[danger]{status}[/danger]"
-                else:
-                    status_str = f"[warning]{status}[/warning]"
+                title = probe_data.get(sub, {}).get("title", "N/A")
+                status_str = f"[success]{status}[/success]" if status == "200" else f"[warning]{status}[/warning]" if status != "ERR" else f"[danger]{status}[/danger]"
                 row_data.extend([status_str, title])
-
             if args.check_takeover:
-                if sub in takeover_data:
-                    row_data.append(f"[critical] {takeover_data[sub]} [/critical]")
-                else:
-                    row_data.append("[muted]—[/muted]")
-
+                row_data.append(f"[bold black on dark_orange3] RISK: {takeover_data[sub]} [/bold black on dark_orange3]" if sub in takeover_data else "[muted]—[/muted]")
             table.add_row(*row_data)
-
-        panel = Panel(
-            table,
-            title=f"[bold white]SCAN RESULTS[/bold white]  ·  [brand.dim]{target_domain}{mode_tag}[/brand.dim]",
-            title_align="left",
-            subtitle=f"[muted]{len(resolved_data)} host(s) resolved[/muted]",
-            subtitle_align="right",
-            box=SQUARE,
-            border_style="brand.dim",
-            padding=(1, 1),
-        )
+        
+        console.print(table)
         console.print()
-        console.print(panel)
 
 
 async def async_main(args):
@@ -503,7 +454,7 @@ async def async_main(args):
         updater = ResolversUpdater(args.resolver_file)
         await updater.update()
         if not args.quiet:
-            print_success("Resolvers updated")
+            console.print(f"[success]✓ Resolvers updated.[/success]")
 
     target_domains = []
     if args.target:
@@ -522,12 +473,12 @@ async def async_main(args):
 
     if not target_domains:
         if not args.quiet:
-            print_error("No valid target domains provided or discovered from ASN/CIDR")
+            console.print("[danger]Error: No valid target domains provided or discovered from ASN/CIDR.[/danger]")
         sys.exit(1)
 
     if not args.quiet:
         print_banner()
-        console.print(f"  [label]Targets loaded:[/label] [value]{len(target_domains)}[/value]\n")
+        console.print(f"[info]▸ Loaded [bold]{len(target_domains)}[/bold] base domain(s) to scan.[/info]\n")
 
     db = Database()
     notifier = Notifier(config_path=args.conf) if args.alert else None
@@ -547,8 +498,8 @@ def main():
     
     # Core Engine
     parser.add_argument("-C", "--concurrency", dest="concurrency", type=int, default=500, help="Number of concurrent connections")
-    parser.add_argument("-K", "--conf", dest="conf", help="Path to YAML config file", default="config.yaml")
-    parser.add_argument("-R", "--resolver-file", dest="resolver_file", help="Path to DNS resolvers", default="resolvers.txt")
+    parser.add_argument("-K", "--conf", dest="conf", help="Path to YAML config file", default="settings.yaml")
+    parser.add_argument("-R", "--resolver-file", dest="resolver_file", help="Path to DNS resolvers", default="dns_resolvers.txt")
     parser.add_argument("--refresh-resolvers", dest="refresh_resolvers", action="store_true", help="Download the latest trusted resolvers")
     parser.add_argument("--skip-resolve", dest="skip_resolve", action="store_true", help="Skip DNS validation")
     parser.add_argument("--monitor", dest="monitor", action="store_true", help="Continuous Monitoring: output only new subdomains")
@@ -558,7 +509,7 @@ def main():
     parser.add_argument("--permute", dest="permute", action="store_true", help="Enable Advanced Permutation Engine")
     parser.add_argument("--permute-list", dest="permute_list", help="Path to custom wordlist for Permutation/Alteration engine")
     parser.add_argument("-B", "--brute", dest="brute", action="store_true", help="Enable Active Dictionary Brute Forcing")
-    parser.add_argument("-D", "--dict-file", dest="dict_file", help="Path to wordlist for brute forcing", default="wordlists/subdomains.txt")
+    parser.add_argument("-D", "--dict-file", dest="dict_file", help="Path to wordlist for brute forcing", default="dictionaries/subdomain_dictionary.txt")
     
     # Probing & Vulnerabilities
     parser.add_argument("--http-check", dest="http_check", action="store_true", help="Enable HTTP/Port Probing")
@@ -576,7 +527,7 @@ def main():
     # Output & Notify
     parser.add_argument("-O", "--save", dest="save", help="Output file path (JSON or CSV based on extension)")
     parser.add_argument("-F", "--stdout-format", dest="stdout_format", choices=["table", "jsonl"], default="table", help="Format for stdout")
-    parser.add_argument("-Q", "--quiet", dest="quiet", action="store_true", help="Quiet mode (stdout is raw subdomains only)")
+    parser.add_argument("-Q", "--quiet", "--silent", dest="quiet", action="store_true", help="Silent mode: suppress banner and status output, print raw scan data only")
     parser.add_argument("-V", "--debug", dest="debug", action="store_true", help="Enable verbose/debug logging")
     parser.add_argument("--alert", dest="alert", action="store_true", help="Send webhooks notifications")
     parser.add_argument("--html-report", dest="html_report", help="Path to save the interactive HTML report (e.g., report.html)")
@@ -585,7 +536,7 @@ def main():
 
     if args.gui or args.master_mode:
         setup_logging(args.debug, False)
-        from haxder.web import run_server
+        from haxder.dashboard import run_server
         run_server(port=args.gui_port, master_mode=args.master_mode)
         sys.exit(0)
 
@@ -595,7 +546,7 @@ def main():
         asyncio.run(async_main(args))
     except KeyboardInterrupt:
         if not args.quiet:
-            print_warning("Interrupted by user. Exiting...")
+            console.print("\n[warning]! Interrupted by user. Exiting...[/warning]")
         sys.exit(0)
 
 if __name__ == "__main__":

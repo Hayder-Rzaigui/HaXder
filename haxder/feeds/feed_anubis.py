@@ -2,7 +2,7 @@ import logging
 from typing import Set
 import aiohttp
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
-from haxder.sources.base import BaseSource
+from haxder.feeds.provider_base import BaseSource
 
 log = logging.getLogger("haxder")
 

@@ -2,14 +2,14 @@ import logging
 from typing import Set
 import aiohttp
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
-from haxder.sources.base import BaseSource
+from haxder.feeds.provider_base import BaseSource
 
 log = logging.getLogger("haxder")
 
-class CertSpotterSource(BaseSource):
+class URLScanSource(BaseSource):
     def __init__(self):
-        super().__init__(name="CertSpotter")
-        self.url_template = "https://api.certspotter.com/v1/issuances?domain={domain}&include_subdomains=true&expand=dns_names"
+        super().__init__(name="URLScan")
+        self.url_template = "https://urlscan.io/api/v1/search/?q=domain:{domain}"
 
     @retry(
         stop=stop_after_attempt(3),
@@ -17,7 +17,7 @@ class CertSpotterSource(BaseSource):
         retry=retry_if_exception_type((aiohttp.ClientError, ValueError)),
         reraise=False
     )
-    async def _fetch_with_retry(self, session: aiohttp.ClientSession, url: str) -> list:
+    async def _fetch_with_retry(self, session: aiohttp.ClientSession, url: str) -> dict:
         headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) HaXder/2.0"}
         async with session.get(url, headers=headers, timeout=15) as response:
             if response.status != 200:
@@ -31,15 +31,14 @@ class CertSpotterSource(BaseSource):
         url = self.url_template.format(domain=domain)
         try:
             data = await self._fetch_with_retry(session, url)
-            if not data:
+            if not data or "results" not in data:
                 return subdomains
-            for entry in data:
-                for name in entry.get("dns_names", []):
-                    name = name.strip().lower()
-                    if name.startswith("*."):
-                        name = name[2:]
-                    if name.endswith(domain) and name != domain:
-                        subdomains.add(name)
+            for result in data["results"]:
+                page_domain = result.get("page", {}).get("domain", "")
+                if page_domain:
+                    page_domain = page_domain.strip().lower()
+                    if page_domain.endswith(domain) and page_domain != domain:
+                        subdomains.add(page_domain)
         except Exception as e:
-            log.debug(f"Error querying CertSpotter: {e}")
+            log.debug(f"Error querying URLScan: {e}")
         return subdomains

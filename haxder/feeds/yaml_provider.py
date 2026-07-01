@@ -2,7 +2,7 @@ import yaml
 import re
 import logging
 from typing import Set, Dict, Any
-from haxder.sources.base import BaseSource
+from haxder.feeds.provider_base import BaseSource
 import urllib.parse
 
 log = logging.getLogger("haxder")

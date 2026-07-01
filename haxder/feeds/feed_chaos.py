@@ -2,7 +2,7 @@ import logging
 import json
 from typing import Set
 import aiohttp
-from haxder.sources.base import BaseSource
+from haxder.feeds.provider_base import BaseSource
 
 log = logging.getLogger("haxder")
 

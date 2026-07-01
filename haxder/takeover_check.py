@@ -12,7 +12,7 @@ class TakeoverEngine:
     and CNAME records against known cloud provider fingerprints.
     """
 
-    def __init__(self, signatures_path: str = "signatures.json"):
+    def __init__(self, signatures_path: str = "takeover_signatures.json"):
         self.signatures: List[Dict] = self._load_signatures(signatures_path)
 
     def _load_signatures(self, path: str) -> List[Dict]:

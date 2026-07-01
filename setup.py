@@ -19,7 +19,7 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "haxder=haxder.cli:main",
+            "haxder=haxder.runner:main",
         ],
     },
     python_requires=">=3.8",
